@@ -1,367 +1,592 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#061b2e" />
-    <meta name="description" content="A tiny, private, in-browser chat with Guppy." />
-    <title>Guppy — local chat</title>
-    <style>
-:root {
-  color-scheme: dark;
-  --ink: #eaf5ff;
-  --muted: #94b3c7;
-  --sea: #061b2e;
-  --sea-deep: #03111e;
-  --line: rgba(163, 218, 230, .17);
-  --coral: #f09a69;
-  --foam: #73d5d0;
-}
-
-* { box-sizing: border-box; }
-html, body { min-height: 100%; }
-body {
-  margin: 0;
-  background: radial-gradient(ellipse 90% 70% at 50% -10%, #123958 0%, var(--sea) 57%, var(--sea-deep) 100%);
-  color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-button, textarea { font: inherit; }
-.app-shell { width: min(100%, 920px); min-height: 100dvh; margin: auto; padding: 0 24px; display: grid; grid-template-rows: auto 1fr auto auto; position: relative; overflow: hidden; }
-.topbar { height: 76px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); z-index: 2; }
-.wordmark { color: var(--ink); text-decoration: none; letter-spacing: -.055em; font-size: 1.45rem; font-weight: 720; display: flex; align-items: center; gap: 5px; }
-.wordmark-mark { color: var(--coral); font-size: 2rem; line-height: 0; transform: rotate(-23deg) translateY(-1px); }
-.status-wrap { color: var(--muted); font-size: .77rem; font-weight: 600; display: flex; gap: 8px; align-items: center; }
-.status-dot { width: 7px; height: 7px; border-radius: 100%; background: #53758a; box-shadow: 0 0 0 3px rgba(83,117,138,.13); }
-.status-wrap[data-ready="true"] .status-dot { background: var(--foam); box-shadow: 0 0 0 3px rgba(115,213,208,.12); }
-.status-wrap[data-error="true"] .status-dot { background: var(--coral); }
-.chat { min-height: 0; overflow-y: auto; padding: 50px clamp(0px, 6vw, 54px) 188px; scrollbar-width: thin; scrollbar-color: rgba(115,213,208,.4) transparent; }
-.message { max-width: 44rem; margin: 0 0 30px; animation: appear .32s ease-out both; }
-.message--user { margin-left: auto; max-width: 38rem; text-align: right; }
-.message-label { color: var(--foam); font-size: .72rem; letter-spacing: .11em; font-weight: 750; text-transform: uppercase; margin-bottom: 8px; }
-.message--user .message-label { color: #d6b1a2; }
-.message p { margin: 0; white-space: pre-wrap; line-height: 1.65; font-size: clamp(.96rem, 1vw + .68rem, 1.05rem); }
-.message--user p { display: inline-block; text-align: left; background: rgba(113,181,193,.1); border: 1px solid rgba(165,228,231,.12); border-radius: 18px 18px 4px 18px; padding: 12px 16px; }
-.thinking { color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
-.thinking i { width: 5px; height: 5px; border-radius: 50%; background: var(--foam); animation: blink 1s infinite alternate; }
-.thinking i:nth-child(2) { animation-delay: .15s; }.thinking i:nth-child(3) { animation-delay: .3s; }
-.reef { position: absolute; pointer-events: none; right: -24px; bottom: 75px; width: min(41vw, 362px); height: 226px; opacity: .96; mask-image: linear-gradient(to bottom, transparent, black 16%); }
-.guppy { width: 266px; position: absolute; right: 12px; bottom: 23px; filter: drop-shadow(0 15px 19px rgba(0,0,0,.29)); transform-origin: center; animation: swim 7s ease-in-out infinite, bob 2.3s ease-in-out infinite; }
-.guppy.is-thinking { animation-play-state: paused; transform: rotate(3deg); }
-.body { fill: url(#body-gradient); }.tail { fill: url(#fin-gradient); }.fin { fill: url(#fin-gradient); opacity: .9; }.stripe { fill: none; stroke: rgba(111,54,105,.4); stroke-width: 8; stroke-linecap: round; }.eye { fill: #162231; }.eye-glint { fill: white; }.mouth { fill: none; stroke: #743a57; stroke-width: 3; stroke-linecap: round; }
-.bubble { border: 1px solid rgba(147,229,234,.27); border-radius: 50%; position: absolute; animation: bubbles 5s linear infinite; }.bubble--one { width: 9px; height: 9px; left: 28%; bottom: 35px; }.bubble--two { width: 15px; height: 15px; left: 12%; bottom: 13px; animation-delay: 1.5s; }.bubble--three { width: 6px; height: 6px; left: 48%; bottom: 22px; animation-delay: 3s; }
-.composer { z-index: 3; width: min(100%, 720px); justify-self: center; align-self: end; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 12px; padding: 10px 10px 10px 17px; background: rgba(5,25,41,.89); border: 1px solid rgba(164,223,230,.25); box-shadow: 0 10px 38px rgba(0,0,0,.22); border-radius: 18px; backdrop-filter: blur(14px); }
-.composer:focus-within { border-color: rgba(115,213,208,.66); box-shadow: 0 0 0 4px rgba(115,213,208,.09), 0 10px 38px rgba(0,0,0,.22); }
-textarea { resize: none; display: block; border: 0; outline: 0; color: var(--ink); background: transparent; padding: 4px 0; line-height: 1.45; min-height: 27px; max-height: 130px; overflow-y: auto; }
-textarea::placeholder { color: #7191a6; } textarea:disabled { cursor: wait; }
-button { width: 38px; height: 38px; border-radius: 12px; border: 0; background: var(--foam); color: #062333; display: grid; place-items: center; cursor: pointer; transition: transform .15s, opacity .15s; } button:hover:not(:disabled) { transform: translateY(-1px); } button:disabled { opacity: .38; cursor: not-allowed; } button svg { width: 20px; fill: currentColor; }
-.privacy-note { z-index: 2; margin: 11px 0 17px; text-align: center; color: #7292a5; font-size: .72rem; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-@keyframes appear { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes blink { to { opacity: .25; transform: translateY(-2px); } }
-@keyframes swim { 0%,100% { right: 12px; } 50% { right: 26px; } }
-@keyframes bob { 0%,100% { margin-bottom: 0; transform: rotate(-2deg); } 50% { margin-bottom: 11px; transform: rotate(3deg); } }
-@keyframes bubbles { from { transform: translateY(0); opacity: 0; } 10%,75% { opacity: 1; } to { transform: translateY(-170px); opacity: 0; } }
-@media (max-width: 600px) { .app-shell { padding: 0 16px; }.chat { padding: 38px 0 157px; }.reef { width: 260px; right: -70px; opacity: .57; }.guppy { width: 220px; }.composer { border-radius: 15px; }.message p { line-height: 1.57; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
-
-    </style>
-  </head>
-  <body>
-    <main class="app-shell" aria-label="Guppy chat">
-      <header class="topbar">
-        <a class="wordmark" href="./" aria-label="Guppy home">
-          <span class="wordmark-mark" aria-hidden="true">~</span>
-          <span>guppy</span>
-        </a>
-        <div class="status-wrap">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="status" aria-live="polite">Starting up</span>
-        </div>
-      </header>
-
-      <section class="chat" id="chat" aria-live="polite" aria-label="Conversation">
-        <article class="message message--assistant intro-message">
-          <div class="message-label">Guppy</div>
-          <p>Hi. I live entirely in this page—ask me something when I’m ready.</p>
-        </article>
-      </section>
-
-      <section class="reef" aria-hidden="true">
-        <div class="bubble bubble--one"></div>
-        <div class="bubble bubble--two"></div>
-        <div class="bubble bubble--three"></div>
-        <svg class="guppy" id="guppy" viewBox="0 0 280 154" role="img" aria-label="A small guppy swimming">
-          <defs>
-            <linearGradient id="body-gradient" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stop-color="#f9d775" />
-              <stop offset=".5" stop-color="#ef8e68" />
-              <stop offset="1" stop-color="#bb527a" />
-            </linearGradient>
-            <linearGradient id="fin-gradient" x1="0" x2="1">
-              <stop offset="0" stop-color="#bc5387" />
-              <stop offset="1" stop-color="#f2a45d" />
-            </linearGradient>
-          </defs>
-          <path class="tail" d="M61 77C26 49 12 23 7 13c37 6 60 20 79 43-11 9-20 16-25 21zM61 77C28 103 14 131 7 142c37-6 61-22 79-43-10-7-18-14-25-22z" />
-          <path class="fin fin--top" d="M122 41c16-27 46-31 67-12-22 6-34 18-42 34z" />
-          <path class="fin fin--bottom" d="M135 108c18 26 43 30 63 16-17-10-28-22-35-37z" />
-          <path class="body" d="M50 77c25-34 68-48 125-38 51 9 82 38 88 38-17 13-40 34-81 40-57 8-105-8-132-40z" />
-          <path class="stripe stripe--one" d="M111 45c-9 22-8 47 3 68" />
-          <path class="stripe stripe--two" d="M142 40c-10 25-8 54 5 78" />
-          <path class="stripe stripe--three" d="M172 43c-10 23-8 50 4 72" />
-          <circle class="eye" cx="196" cy="64" r="8" />
-          <circle class="eye-glint" cx="199" cy="61" r="2.5" />
-          <path class="mouth" d="M247 85q8 3 13-2" />
-        </svg>
-      </section>
-
-      <form class="composer" id="composer">
-        <label class="sr-only" for="prompt">Message Guppy</label>
-        <textarea id="prompt" rows="1" maxlength="280" placeholder="Message Guppy…" disabled></textarea>
-        <button id="send" type="submit" disabled>
-          <span class="sr-only">Send</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.7 3.3a1 1 0 0 0-1-.24L3.72 8.4a1 1 0 0 0 .06 1.89l7.15 2.39 2.39 7.15a1 1 0 0 0 1.89.06l5.73-15.98a1 1 0 0 0-.24-1.05ZM14.5 16.26l-1.32-3.95a1 1 0 0 0-.63-.63L8.6 10.36l8.16-3.05-2.26 8.95Z" /></svg>
-        </button>
-      </form>
-      <p class="privacy-note">Runs on your device · Model files stay in your browser</p>
-    </main>
-    <script type="module">
-import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.mjs";
-
-// Keep these beside index.html when publishing to GitHub Pages.
-const MODEL_URL = "./model.onnx";
-const TOKENIZER_URL = "./tokenizer.json";
-const MAX_CONTEXT_TOKENS = 128;
-const MAX_NEW_TOKENS = 42;
-const TEMPERATURE = 0.72;
-const TOP_K = 40;
-
-const chat = document.querySelector("#chat");
-const form = document.querySelector("#composer");
-const promptInput = document.querySelector("#prompt");
-const sendButton = document.querySelector("#send");
-const fish = document.querySelector("#guppy");
-const status = document.querySelector("#status");
-const statusWrap = document.querySelector(".status-wrap");
-
-let session;
-let tokenizer;
-let messages = [];
-let busy = false;
-
-function setStatus(text, state = "loading") {
-  status.textContent = text;
-  statusWrap.dataset.ready = state === "ready" ? "true" : "false";
-  statusWrap.dataset.error = state === "error" ? "true" : "false";
-}
-
-function scrollToLatest() { chat.scrollTop = chat.scrollHeight; }
-
-function appendMessage(role, text) {
-  const article = document.createElement("article");
-  article.className = `message message--${role}`;
-  const label = document.createElement("div");
-  label.className = "message-label";
-  label.textContent = role === "user" ? "You" : "Guppy";
-  const body = document.createElement("p");
-  body.textContent = text;
-  article.append(label, body);
-  chat.append(article);
-  scrollToLatest();
-  return article;
-}
-
-function showThinking() {
-  const article = document.createElement("article");
-  article.className = "message message--assistant";
-  article.innerHTML = '<div class="message-label">Guppy</div><p class="thinking"><i></i><i></i><i></i><span class="sr-only">Thinking</span></p>';
-  chat.append(article);
-  scrollToLatest();
-  return article;
-}
-
-function resizeInput() {
-  promptInput.style.height = "auto";
-  promptInput.style.height = `${Math.min(promptInput.scrollHeight, 130)}px`;
-}
-
-// Hugging Face's ByteLevel BPE encoding, kept here to avoid a second runtime download.
-class ByteLevelBPE {
-  constructor(data) {
-    this.vocab = data.model.vocab;
-    this.merges = new Map(data.model.merges.map((pair, rank) => [pair.join(" "), rank]));
-    this.idToToken = Object.fromEntries(Object.entries(this.vocab).map(([token, id]) => [id, token]));
-    this.cache = new Map();
-    this.special = new Map((data.added_tokens || []).filter((token) => token.special).map((token) => [token.content, token.id]));
-    this.byteEncoder = this.makeByteEncoder();
-    this.byteDecoder = new Map([...this.byteEncoder.entries()].map(([byte, char]) => [char, byte]));
-  }
-
-  makeByteEncoder() {
-    const bytes = [];
-    for (let value = 33; value <= 126; value++) bytes.push(value);
-    for (let value = 161; value <= 172; value++) bytes.push(value);
-    for (let value = 174; value <= 255; value++) bytes.push(value);
-    const chars = [...bytes];
-    let extra = 0;
-    for (let value = 0; value < 256; value++) {
-      if (!bytes.includes(value)) { bytes.push(value); chars.push(256 + extra++); }
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Guppy Chat</title>
+  <style>
+    :root {
+      --bg: #061b2e;
+      --panel: #0b2942;
+      --line: #24506d;
+      --ink: #ebf8ff;
+      --muted: #94b4c8;
+      --aqua: #74dfd4;
+      --coral: #f2a16f;
     }
-    return new Map(bytes.map((byte, index) => [byte, String.fromCodePoint(chars[index])]));
-  }
 
-  bpe(word) {
-    if (this.cache.has(word)) return this.cache.get(word);
-    let tokens = [...word];
-    while (tokens.length > 1) {
-      let bestIndex = -1;
-      let bestRank = Infinity;
-      for (let index = 0; index < tokens.length - 1; index++) {
-        const rank = this.merges.get(`${tokens[index]} ${tokens[index + 1]}`);
-        if (rank !== undefined && rank < bestRank) { bestRank = rank; bestIndex = index; }
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font: 16px/1.55 system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 50% -20%, #195173, transparent 47%),
+        var(--bg);
+    }
+
+    main {
+      width: min(900px, 100%);
+      min-height: 100vh;
+      margin: auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      min-height: 72px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: -.04em;
+    }
+
+    #status {
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 42px 0 190px;
+    }
+
+    .message {
+      max-width: 680px;
+      margin: 0 0 28px;
+      animation: appear .2s ease-out;
+    }
+
+    .message.user {
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .label {
+      margin-bottom: 7px;
+      color: var(--aqua);
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .user .label { color: var(--coral); }
+
+    .bubble {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    .user .bubble {
+      display: inline-block;
+      padding: 11px 15px;
+      text-align: left;
+      background: rgba(116, 223, 212, .1);
+      border: 1px solid rgba(116, 223, 212, .18);
+      border-radius: 16px 16px 3px 16px;
+    }
+
+    .thinking {
+      color: var(--muted);
+      letter-spacing: .18em;
+    }
+
+    .fish-zone {
+      position: fixed;
+      right: 4vw;
+      bottom: 110px;
+      pointer-events: none;
+      opacity: .92;
+    }
+
+    #fish {
+      width: 190px;
+      filter: drop-shadow(0 15px 18px rgba(0,0,0,.25));
+      animation: swim 5s ease-in-out infinite, float 2s ease-in-out infinite;
+    }
+
+    #fish.thinking {
+      animation-play-state: paused;
+      transform: rotate(3deg);
+    }
+
+    form {
+      position: fixed;
+      z-index: 2;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(720px, calc(100% - 40px));
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: rgba(6, 27, 46, .95);
+      backdrop-filter: blur(10px);
+    }
+
+    textarea {
+      resize: none;
+      min-height: 42px;
+      max-height: 120px;
+      padding: 9px;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      outline: 0;
+      font: inherit;
+    }
+
+    button {
+      min-width: 82px;
+      border: 0;
+      border-radius: 11px;
+      color: #06202c;
+      background: var(--aqua);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:disabled, textarea:disabled {
+      opacity: .45;
+      cursor: wait;
+    }
+
+    .note {
+      position: fixed;
+      bottom: 3px;
+      left: 0;
+      width: 100%;
+      color: var(--muted);
+      text-align: center;
+      font-size: .7rem;
+    }
+
+    @keyframes swim {
+      50% { transform: translateX(-18px) rotate(3deg); }
+    }
+
+    @keyframes float {
+      50% { margin-bottom: 10px; }
+    }
+
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      .fish-zone { opacity: .45; right: -45px; }
+      #fish { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>~ guppy</h1>
+      <span id="status">Loading tokenizer…</span>
+    </header>
+
+    <section id="chat" aria-live="polite">
+      <article class="message">
+        <div class="label">Guppy</div>
+        <p class="bubble">Hi. I’m loading locally in your browser.</p>
+      </article>
+    </section>
+  </main>
+
+  <div class="fish-zone" aria-hidden="true">
+    <svg id="fish" viewBox="0 0 280 150">
+      <defs>
+        <linearGradient id="body" x1="0" x2="1">
+          <stop stop-color="#f6d675"/>
+          <stop offset=".55" stop-color="#ef956b"/>
+          <stop offset="1" stop-color="#bd5b82"/>
+        </linearGradient>
+      </defs>
+      <path fill="#c95d87" d="M62 75C26 47 13 23 6 12c39 7 64 23 81 46-10 7-18 13-25 17zm0 0C28 102 14 128 6 140c39-7 64-24 81-47-10-6-18-12-25-18z"/>
+      <path fill="url(#body)" d="M51 75c27-35 76-46 130-34 47 10 78 34 90 34-19 16-46 33-88 40-57 9-105-8-132-40z"/>
+      <path fill="none" stroke="rgba(96,37,92,.4)" stroke-width="8" stroke-linecap="round" d="M112 46c-9 21-8 44 3 66m28-71c-10 24-8 52 5 75m25-72c-10 22-8 47 3 69"/>
+      <circle cx="200" cy="63" r="8" fill="#14222e"/>
+      <circle cx="203" cy="60" r="2.5" fill="white"/>
+    </svg>
+  </div>
+
+  <form id="form">
+    <textarea id="input" placeholder="Message Guppy…" maxlength="280" disabled></textarea>
+    <button id="send" disabled>Send</button>
+  </form>
+  <div class="note">Runs locally · no messages leave your browser</div>
+
+  <script type="module">
+    import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.mjs";
+
+    const MODEL_URL = "./model.onnx";
+    const TOKENIZER_URL = "./tokenizer.json";
+
+    const MAX_SEQ_LEN = 128;
+    const MAX_NEW_TOKENS = 32;
+    const TEMPERATURE = 0.4;
+    const TOP_K = 40;
+
+    /*
+      Leave false unless the TRAINING CODE included category in the prompt.
+
+      If the exact training prompt was:
+      "category: curious\nwhat are you looking at"
+      then set this true and provide a real category classifier.
+    */
+    const INCLUDE_CATEGORY = false;
+
+    const chat = document.querySelector("#chat");
+    const input = document.querySelector("#input");
+    const send = document.querySelector("#send");
+    const fish = document.querySelector("#fish");
+    const status = document.querySelector("#status");
+
+    let session;
+    let tokenizer;
+    let busy = false;
+
+    function addMessage(role, text) {
+      const item = document.createElement("article");
+      item.className = `message ${role}`;
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = role === "user" ? "You" : "Guppy";
+
+      const body = document.createElement("p");
+      body.className = "bubble";
+      body.textContent = text;
+
+      item.append(label, body);
+      chat.append(item);
+      chat.scrollTop = chat.scrollHeight;
+      return item;
+    }
+
+    function addThinking() {
+      return addMessage("assistant", "thinking…");
+    }
+
+    class ByteLevelBPE {
+      constructor(json) {
+        this.vocab = json.model.vocab;
+        this.idToToken = Object.fromEntries(
+          Object.entries(this.vocab).map(([token, id]) => [id, token])
+        );
+
+        this.special = new Map(
+          json.added_tokens
+            .filter(token => token.special)
+            .map(token => [token.content, token.id])
+        );
+
+        this.ranks = new Map(
+          json.model.merges.map((pair, rank) => [
+            Array.isArray(pair) ? pair.join(" ") : pair,
+            rank
+          ])
+        );
+
+        this.cache = new Map();
+        this.byteEncoder = this.makeByteEncoder();
+        this.byteDecoder = new Map(
+          [...this.byteEncoder.entries()].map(([byte, character]) => [character, byte])
+        );
       }
-      if (bestIndex < 0) break;
-      tokens.splice(bestIndex, 2, tokens[bestIndex] + tokens[bestIndex + 1]);
-    }
-    this.cache.set(word, tokens);
-    return tokens;
-  }
 
-  encodeText(text) {
-    const pieces = text.match(/'s|'t|'re|'ve|'m|'ll|'d| ?[\p{L}]+| ?[\p{N}]+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu) || [];
-    const result = [];
-    for (const piece of pieces) {
-      const byteWord = Array.from(new TextEncoder().encode(piece), (byte) => this.byteEncoder.get(byte)).join("");
-      for (const token of this.bpe(byteWord)) {
-        const id = this.vocab[token];
-        if (id !== undefined) result.push(id);
+      makeByteEncoder() {
+        const bytes = [];
+        for (let i = 33; i <= 126; i++) bytes.push(i);
+        for (let i = 161; i <= 172; i++) bytes.push(i);
+        for (let i = 174; i <= 255; i++) bytes.push(i);
+
+        const characters = [...bytes];
+        let extra = 0;
+
+        for (let i = 0; i < 256; i++) {
+          if (!bytes.includes(i)) {
+            bytes.push(i);
+            characters.push(256 + extra++);
+          }
+        }
+
+        return new Map(
+          bytes.map((byte, index) => [byte, String.fromCodePoint(characters[index])])
+        );
+      }
+
+      bpe(word) {
+        if (this.cache.has(word)) return this.cache.get(word);
+
+        let pieces = [...word];
+
+        while (pieces.length > 1) {
+          let bestRank = Infinity;
+          let bestIndex = -1;
+
+          for (let i = 0; i < pieces.length - 1; i++) {
+            const rank = this.ranks.get(`${pieces[i]} ${pieces[i + 1]}`);
+            if (rank !== undefined && rank < bestRank) {
+              bestRank = rank;
+              bestIndex = i;
+            }
+          }
+
+          if (bestIndex < 0) break;
+          pieces.splice(bestIndex, 2, pieces[bestIndex] + pieces[bestIndex + 1]);
+        }
+
+        this.cache.set(word, pieces);
+        return pieces;
+      }
+
+      encodeText(text) {
+        const pattern =
+          /'s|'t|'re|'ve|'m|'ll|'d| ?[\p{L}]+| ?[\p{N}]+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
+
+        const words = text.match(pattern) || [];
+        const ids = [];
+
+        for (const word of words) {
+          const bytes = new TextEncoder().encode(word);
+          const byteWord = Array.from(
+            bytes,
+            byte => this.byteEncoder.get(byte)
+          ).join("");
+
+          for (const token of this.bpe(byteWord)) {
+            const id = this.vocab[token];
+            if (id !== undefined) ids.push(id);
+          }
+        }
+
+        return ids;
+      }
+
+      encode(text) {
+        const escaped = [...this.special.keys()]
+          .map(value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .join("|");
+
+        const parts = text.split(new RegExp(`(${escaped})`, "g"));
+        const ids = [];
+
+        for (const part of parts) {
+          if (!part) continue;
+          if (this.special.has(part)) {
+            ids.push(this.special.get(part));
+          } else {
+            ids.push(...this.encodeText(part));
+          }
+        }
+
+        return ids;
+      }
+
+      decode(ids) {
+        const specialById = new Map(
+          [...this.special.entries()].map(([token, id]) => [id, token])
+        );
+
+        let result = "";
+        let bytes = [];
+
+        const flush = () => {
+          if (bytes.length) {
+            result += new TextDecoder().decode(new Uint8Array(bytes));
+            bytes = [];
+          }
+        };
+
+        for (const id of ids) {
+          if (specialById.has(id)) {
+            flush();
+            result += specialById.get(id);
+            continue;
+          }
+
+          const token = this.idToToken[id] || "";
+          for (const char of token) {
+            const byte = this.byteDecoder.get(char);
+            if (byte !== undefined) bytes.push(byte);
+          }
+        }
+
+        flush();
+        return result;
       }
     }
-    return result;
-  }
 
-  encode(text) {
-    const pattern = [...this.special.keys()].map(escapeRegex).join("|");
-    if (!pattern) return this.encodeText(text);
-    const segments = text.split(new RegExp(`(${pattern})`, "g"));
-    return segments.flatMap((segment) => this.special.has(segment) ? [this.special.get(segment)] : this.encodeText(segment));
-  }
+    function guessCategory(text) {
+      const value = text.toLowerCase();
 
-  decode(ids) {
-    const specialById = new Map([...this.special.entries()].map(([token, id]) => [id, token]));
-    let output = "";
-    let bytes = [];
-    const flush = () => { if (bytes.length) { output += new TextDecoder().decode(new Uint8Array(bytes)); bytes = []; } };
-    for (const id of ids) {
-      if (specialById.has(id)) { flush(); output += specialById.get(id); continue; }
-      const token = this.idToToken[id] || "";
-      for (const char of token) { const byte = this.byteDecoder.get(char); if (byte !== undefined) bytes.push(byte); }
+      if (/look|watch|see/.test(value)) return "curious";
+      if (/friend|best friend/.test(value)) return "friends";
+      if (/healthy|health|sick|feel ok/.test(value)) return "doctor";
+      if (/snail|tankmate/.test(value)) return "snail";
+
+      return "curious";
     }
-    flush();
-    return output;
-  }
-}
 
-function escapeRegex(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+    function makePrompt(userText) {
+      const content = INCLUDE_CATEGORY
+        ? `category: ${guessCategory(userText)}\n${userText}`
+        : userText;
 
-function formatPrompt(history) {
-  return `${history.map(({ role, content }) => `<|im_start|>${role}\n${content}<|im_end|>`).join("\n")}\n<|im_start|>assistant\n`;
-}
+      return `<|im_start|>user\n${content}<|im_end|>\n<|im_start|>assistant\n`;
+    }
 
-function trimToWindow(ids) {
-  return ids.slice(Math.max(0, ids.length - (MAX_CONTEXT_TOKENS - MAX_NEW_TOKENS)));
-}
+    function sample(logits) {
+      const candidates = [];
 
-function sample(logits) {
-  const candidates = [];
-  for (let i = 0; i < logits.length; i++) candidates.push([i, logits[i] / TEMPERATURE]);
-  candidates.sort((a, b) => b[1] - a[1]);
-  const top = candidates.slice(0, TOP_K);
-  const max = top[0][1];
-  const weights = top.map(([, value]) => Math.exp(value - max));
-  const total = weights.reduce((sum, value) => sum + value, 0);
-  let needle = Math.random() * total;
-  for (let i = 0; i < top.length; i++) { needle -= weights[i]; if (needle <= 0) return top[i][0]; }
-  return top[0][0];
-}
+      for (let i = 0; i < logits.length; i++) {
+        candidates.push([i, logits[i] / TEMPERATURE]);
+      }
 
-async function generate(history) {
-  let inputIds = trimToWindow(tokenizer.encode(formatPrompt(history)));
-  const generated = [];
-  for (let step = 0; step < MAX_NEW_TOKENS; step++) {
-    const input = new ort.Tensor("int64", BigInt64Array.from(inputIds, BigInt), [1, inputIds.length]);
-    const result = await session.run({ [session.inputNames[0]]: input });
-    const logits = result[session.outputNames[0]];
-    const vocabularySize = logits.dims.at(-1);
-    const next = sample(logits.data.slice(logits.data.length - vocabularySize));
-    if (next === 2 || next === 1) break;
-    generated.push(next);
-    inputIds.push(next);
-    if (inputIds.length >= MAX_CONTEXT_TOKENS) inputIds.shift();
-  }
-  return tokenizer.decode(generated).split("<|im_end|>")[0].split("<|im_start|>")[0].trim() || "I’m not sure how to answer that yet.";
-}
+      candidates.sort((a, b) => b[1] - a[1]);
+      const top = candidates.slice(0, TOP_K);
+      const max = top[0][1];
+      const weights = top.map(([, value]) => Math.exp(value - max));
+      const sum = weights.reduce((total, value) => total + value, 0);
 
-async function boot() {
-  try {
-    setStatus("Loading tokenizer…");
-    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
-    const tokenizerResponse = await fetch(TOKENIZER_URL);
-    if (!tokenizerResponse.ok) throw new Error(`Tokenizer request failed (${tokenizerResponse.status}).`);
-    tokenizer = new ByteLevelBPE(await tokenizerResponse.json());
-    setStatus("Loading language model…");
-    const modelResponse = await fetch(MODEL_URL);
-    if (!modelResponse.ok) throw new Error(`Model request failed (${modelResponse.status}).`);
-    // Passing bytes, rather than a URL, prevents path resolution problems in static hosts.
-    const modelBytes = await modelResponse.arrayBuffer();
-    session = await ort.InferenceSession.create(modelBytes, { executionProviders: ["wasm"] });
-    setStatus("Ready", "ready");
-    promptInput.disabled = false;
-    sendButton.disabled = false;
-    promptInput.focus();
-  } catch (error) {
-    console.error(error);
-    setStatus("Couldn’t load model", "error");
-    appendMessage("assistant", `I couldn’t start the local model (${error.message}). Make sure model.onnx and tokenizer.json are next to index.html, and open the site through GitHub Pages or a local web server—not by double-clicking the HTML file.`);
-  }
-}
+      let point = Math.random() * sum;
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const prompt = promptInput.value.trim();
-  if (!prompt || busy || !session) return;
-  busy = true;
-  promptInput.disabled = true;
-  sendButton.disabled = true;
-  fish.classList.add("is-thinking");
-  appendMessage("user", prompt);
-  messages.push({ role: "user", content: prompt });
-  promptInput.value = "";
-  resizeInput();
-  const thinking = showThinking();
-  try {
-    const response = await generate(messages);
-    thinking.remove();
-    appendMessage("assistant", response);
-    messages.push({ role: "assistant", content: response });
-  } catch (error) {
-    console.error(error);
-    thinking.remove();
-    appendMessage("assistant", "Something interrupted my current thought. Please try that again.");
-  } finally {
-    busy = false;
-    fish.classList.remove("is-thinking");
-    promptInput.disabled = false;
-    sendButton.disabled = false;
-    promptInput.focus();
-  }
-});
+      for (let i = 0; i < top.length; i++) {
+        point -= weights[i];
+        if (point <= 0) return top[i][0];
+      }
 
-promptInput.addEventListener("input", resizeInput);
-promptInput.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
-boot();
+      return top[0][0];
+    }
 
-    </script>
-  </body>
+    async function generate(userText) {
+      // Important: only the current prompt is sent.
+      let ids = tokenizer.encode(makePrompt(userText));
+      ids = ids.slice(-(MAX_SEQ_LEN - MAX_NEW_TOKENS));
+
+      const generated = [];
+
+      for (let step = 0; step < MAX_NEW_TOKENS; step++) {
+        const tensor = new ort.Tensor(
+          "int64",
+          BigInt64Array.from(ids, BigInt),
+          [1, ids.length]
+        );
+
+        const output = await session.run({ input_ids: tensor });
+        const logits = output.logits;
+        const vocabSize = logits.dims.at(-1);
+        const lastLogits = logits.data.slice(logits.data.length - vocabSize);
+
+        const next = sample(lastLogits);
+
+        if (next === 1 || next === 2) break;
+
+        generated.push(next);
+        ids.push(next);
+
+        if (ids.length > MAX_SEQ_LEN) ids.shift();
+      }
+
+      return tokenizer.decode(generated)
+        .split("<|im_end|>")[0]
+        .split("<|im_start|>")[0]
+        .trim() || "blub.";
+    }
+
+    async function boot() {
+      try {
+        ort.env.wasm.wasmPaths =
+          "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/";
+
+        const tokenizerResponse = await fetch(TOKENIZER_URL);
+        if (!tokenizerResponse.ok) throw new Error("tokenizer.json was not found");
+
+        tokenizer = new ByteLevelBPE(await tokenizerResponse.json());
+
+        status.textContent = "Loading model…";
+
+        const modelResponse = await fetch(MODEL_URL);
+        if (!modelResponse.ok) throw new Error("model.onnx was not found");
+
+        session = await ort.InferenceSession.create(
+          await modelResponse.arrayBuffer(),
+          { executionProviders: ["wasm"] }
+        );
+
+        status.textContent = "Ready";
+        input.disabled = false;
+        send.disabled = false;
+        input.focus();
+      } catch (error) {
+        console.error(error);
+        status.textContent = "Could not load model";
+        addMessage(
+          "assistant",
+          `Load error: ${error.message}. Open this through GitHub Pages or a local web server, not file://.`
+        );
+      }
+    }
+
+    document.querySelector("#form").addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const text = input.value.trim();
+      if (!text || busy || !session) return;
+
+      busy = true;
+      input.disabled = true;
+      send.disabled = true;
+      fish.classList.add("thinking");
+
+      addMessage("user", text);
+      input.value = "";
+
+      const thinking = addThinking();
+
+      try {
+        const reply = await generate(text);
+        thinking.remove();
+        addMessage("assistant", reply);
+      } catch (error) {
+        console.error(error);
+        thinking.remove();
+        addMessage("assistant", "My thought got tangled. Please try again.");
+      } finally {
+        busy = false;
+        input.disabled = false;
+        send.disabled = false;
+        fish.classList.remove("thinking");
+        input.focus();
+      }
+    });
+
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        document.querySelector("#form").requestSubmit();
+      }
+    });
+
+    boot();
+  </script>
+</body>
 </html>
